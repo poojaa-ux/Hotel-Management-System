@@ -287,7 +287,27 @@ def checkout(booking_id):
         cursor.close()
         db.close()
 
+@app.route("/guests", methods=["GET"])
+def get_guests():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
 
+    try:
+        cursor.execute("""
+            SELECT *
+            FROM guests
+            ORDER BY guest_id DESC
+        """)
+        guests = cursor.fetchall()
+        return jsonify(guests)
+
+    except Exception as error:
+        return jsonify({"message": str(error)}), 500
+
+    finally:
+        cursor.close()
+        db.close()
+        
 # -------------------------
 # SERVER
 # -------------------------
