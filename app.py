@@ -16,7 +16,32 @@ def get_db():
         database=os.environ.get("MYSQLDATABASE")
     )
 
+@app.route("/test-db")
+def test_db():
 
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute("SELECT 1")
+
+        result = cursor.fetchone()
+
+        cursor.close()
+        db.close()
+
+        return jsonify({
+            "message": "MySQL connected successfully",
+            "result": result
+        })
+
+    except Exception as error:
+
+        return jsonify({
+            "message": "MySQL connection failed",
+            "error": str(error)
+        }), 500
+        
 @app.route("/")
 def home():
     return jsonify({
