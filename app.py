@@ -286,7 +286,55 @@ def checkout(booking_id):
 
         cursor.close()
         db.close()
+@app.route("/cancel/<int:booking_id>", methods=["PUT"])
+def cancel_booking(booking_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
 
+    try:
+        cursor.execute("""
+            SELECT room_id
+            FROM bookings
+            WHERE booking_id = %s
+            AND status = 'Booked'
+        """, (booking_id,))
+
+        booking = cursor.fetchone()
+
+        if booking is None:
+            return jsonify({
+                "message": "Booking not found"
+            }), 404
+
+        cursor.execute("""
+            UPDATE bookings
+            SET status = 'Cancelled'
+            WHERE booking_id = %s
+        """, (booking_id,))
+
+        cursor.execute("""
+            UPDATE rooms
+            SET status = 'Available'
+            WHERE room_id = %s
+        """, (booking["room_id"],))
+
+        db.commit()
+
+        return jsonify({
+            "message": "Booking cancelled successfully"
+        })
+
+    except Exception as error:
+        db.rollback()
+
+        return jsonify({
+            "message": str(error)
+        }), 500
+
+    finally:
+        cursor.close()
+        db.close()
+        
 @app.route("/guests", methods=["GET"])
 def get_guests():
     db = get_db()
