@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
 import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
@@ -15,6 +16,71 @@ def get_db():
         password=os.environ.get("MYSQLPASSWORD"),
         database=os.environ.get("MYSQLDATABASE")
     )
+
+@app.route("/signup", methods=["POST"])
+def signup():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    role = data.get("role", "customer")
+
+    if not username or not password:
+        return jsonify({"message": "Username and password are required"}), 400
+
+    hashed_password = generate_password_hash(password)
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO users (username, password, role)
+            VALUES (%s, %s, %s)
+        """, (username, hashed_password, role))
+        db.commit()
+        return jsonify({"message": "User registered successfully"}), 201
+    except mysql.connector.Error as err:
+        db.rollback()
+        return jsonify({"message": "Username already exists or database error", "error": str(err)}), 400
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    role = data.get("role")
+
+    if not username or not password or not role:
+        return jsonify({"message": "Username, password, and role are required"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT * FROM users 
+            WHERE username = %s AND role = %s
+        """, (username, role))
+        user = cursor.fetchone()
+
+        if user and check_password_hash(user['password'], password):
+            return jsonify({
+                "message": "Login successful",
+                "user_id": user['user_id'],
+                "username": user['username'],
+                "role": user['role']
+            }), 200
+        else:
+            return jsonify({"message": "Invalid username, password, or role"}), 401
+    except Exception as error:
+        return jsonify({"message": "Login failed", "error": str(error)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
 
 @app.route("/test-db")
 def test_db():
