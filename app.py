@@ -56,22 +56,29 @@ def home():
 @app.route("/rooms", methods=["GET"])
 def get_rooms():
 
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
 
-    cursor.execute("""
-        SELECT *
-        FROM rooms
-        ORDER BY room_number
-    """)
+        cursor.execute("""
+            SELECT *
+            FROM rooms
+            ORDER BY room_number
+        """)
 
-    rooms = cursor.fetchall()
+        rooms = cursor.fetchall()
 
-    cursor.close()
-    db.close()
+        cursor.close()
+        db.close()
 
-    return jsonify(rooms)
+        return jsonify(rooms)
 
+    except Exception as error:
+
+        return jsonify({
+            "message": "Failed to load rooms",
+            "error": str(error)
+        }), 500
 
 # -------------------------
 # BOOK ROOM
